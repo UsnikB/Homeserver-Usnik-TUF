@@ -19,15 +19,13 @@
   - [Gluetun (VPN Gateway)](#gluetun-vpn-gateway)
   - [qBittorrent](#qbittorrent)
   - [Prowlarr](#prowlarr)
-  - [Radarr · Sonarr · Lidarr](#radarr--sonarr--lidarr)
-  - [Bazarr](#bazarr)
+  - [Radarr · Sonarr · Lidarr · Bazarr](#radarr--sonarr--lidarr--bazarr)
   - [Jellyfin](#jellyfin)
   - [Jellyseerr](#jellyseerr)
   - [Portainer](#portainer)
   - [Cloudflared](#cloudflared)
   - [Glances (System Stats)](#glances-system-stats)
   - [Diskstats (Custom GPU + Disk API)](#diskstats-custom-gpu--disk-api)
-  - [Uptime Kuma](#uptime-kuma)
   - [Homepage — Nginx Reverse Proxy](#homepage--nginx-reverse-proxy)
   - [Obsidian Remote](#obsidian-remote)
 - [Nginx Configuration Reference](#nginx-configuration-reference)
@@ -249,13 +247,13 @@ docker compose up -d
 
 ## Service Deployment
 
-All compose files are in `compose/<service>/docker-compose.yml`. The full arr stack (Gluetun, qBittorrent, Prowlarr, all Arrs, Jellyfin, Jellyseerr, Stash) lives in a single file: `compose/arr/docker-compose.yml`.
+All compose files are in `compose/<service>/docker-compose.yml`. The full arr stack (Gluetun, qBittorrent, Prowlarr, all Arrs, Jellyfin, Jellyseerr) lives in a single file: `compose/arr/docker-compose.yml`.
 
 ---
 
 ### Gluetun (VPN Gateway)
 
-Routes all traffic from qBittorrent, Prowlarr, and Stash through PIA VPN (Netherlands, OpenVPN).
+Routes all traffic from qBittorrent and Prowlarr through PIA VPN (Netherlands, OpenVPN).
 
 Credentials are stored in `compose/arr/.env` (not committed — see `.env.example`):
 
@@ -280,11 +278,10 @@ gluetun:
     - OPENVPN_PASSWORD=${PIA_PASSWORD}
     - SERVER_REGIONS=Netherlands
     - TZ=Asia/Kolkata
-    - FIREWALL_INPUT_PORTS=8090,9696,9999
+    - FIREWALL_INPUT_PORTS=8090,9696
   ports:
     - 8090:8090   # qBittorrent WebUI
     - 9696:9696   # Prowlarr
-    - 9999:9999   # Stash
     - 6881:6881   # Torrent peers
   networks:
     - arr-network
@@ -521,12 +518,6 @@ server {
     location /jellyseerr/  { return 302 http://$host:5055/; }
     location = /jellyseerr { return 302 http://$host:5055/; }
 
-    location /stash/ {
-        proxy_pass http://gluetun:9999;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_redirect / /stash/;
-    }
     location /uptime/ {
         proxy_pass http://uptimekuma:3001;
         proxy_set_header Upgrade $http_upgrade;

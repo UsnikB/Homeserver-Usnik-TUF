@@ -18,7 +18,7 @@ services:
       - DNS_ADDRESS=1.1.1.1
       - HTTP_CONTROL_SERVER_PORT=8181
       - HEALTH_SERVER_ADDRESS=:9998
-      - FIREWALL_INPUT_PORTS=8090,9696,9999
+      - FIREWALL_INPUT_PORTS=8090,9696
     volumes:
       - /mnt/e/appdata/gluetun:/gluetun
     ports:
@@ -27,7 +27,6 @@ services:
       - 9696:9696
       - 6881:6881
       - 6881:6881/udp
-      - 9999:9999
     networks:
       - arr-network
 
@@ -170,29 +169,6 @@ services:
       - 5055:5055
     networks:
       - arr-network
-
-  stash:
-    image: stashapp/stash:latest
-    container_name: stash
-    restart: unless-stopped
-    network_mode: service:gluetun
-    depends_on:
-      gluetun:
-        condition: service_healthy
-    environment:
-      - STASH_STASH=/data/
-      - STASH_GENERATED=/generated/
-      - STASH_METADATA=/metadata/
-      - STASH_CACHE=/cache/
-      - STASH_PORT=9999
-    volumes:
-      - /etc/localtime:/etc/localtime:ro
-      - /mnt/e/appdata/stash/config:/root/.stash
-      - /mnt/e/downloads:/data
-      - /mnt/e/appdata/stash/metadata:/metadata
-      - /mnt/e/appdata/stash/cache:/cache
-      - /mnt/e/appdata/stash/blobs:/blobs
-      - /mnt/e/appdata/stash/generated:/generated
 
 networks:
   arr-network:
