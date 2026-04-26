@@ -1,0 +1,11 @@
+authorityKeyIdentifier=keyid,issuer
+basicConstraints=CA:FALSE
+keyUsage = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment
+subjectAltName = @alt_names
+
+[alt_names]
+DNS.1 = usnik-tuf-arch.tail25be85.ts.net
+DNS.2 = usnik-tuf
+DNS.3 = usnik-tuf-arch
+DNS.4 = localhost
+IP.1 = 127.0.0.1

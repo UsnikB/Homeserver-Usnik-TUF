@@ -1,0 +1,199 @@
+services:
+
+  gluetun:
+    image: qmcgaw/gluetun:latest
+    container_name: gluetun
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      - VPN_SERVICE_PROVIDER=private internet access
+      - VPN_TYPE=openvpn
+      - OPENVPN_USER=${PIA_USER}
+      - OPENVPN_PASSWORD=${PIA_PASSWORD}
+      - SERVER_REGIONS=Netherlands
+      - TZ=Asia/Kolkata
+      - DNS_ADDRESS=1.1.1.1
+      - HTTP_CONTROL_SERVER_PORT=8181
+      - HEALTH_SERVER_ADDRESS=:9998
+      - FIREWALL_INPUT_PORTS=8090,9696,9999
+    volumes:
+      - /mnt/e/appdata/gluetun:/gluetun
+    ports:
+      - 8090:8090
+      - 8181:8181
+      - 9696:9696
+      - 6881:6881
+      - 6881:6881/udp
+      - 9999:9999
+    networks:
+      - arr-network
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    restart: unless-stopped
+    network_mode: service:gluetun
+    depends_on:
+      gluetun:
+        condition: service_healthy
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Asia/Kolkata
+      - WEBUI_PORT=8090
+    volumes:
+      - /mnt/e/appdata/qbittorrent:/config
+      - /mnt/e/downloads:/downloads
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    restart: unless-stopped
+    network_mode: service:gluetun
+    depends_on:
+      gluetun:
+        condition: service_healthy
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Asia/Kolkata
+    volumes:
+      - /mnt/e/appdata/prowlarr:/config
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Asia/Kolkata
+    volumes:
+      - /mnt/e/appdata/radarr:/config
+      - /mnt/d/media/movies:/movies
+      - /mnt/e/downloads:/downloads
+    ports:
+      - 7878:7878
+    networks:
+      - arr-network
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Asia/Kolkata
+    volumes:
+      - /mnt/e/appdata/sonarr:/config
+      - /mnt/d/media/tv:/tv
+      - /mnt/d/media/adult:/adult
+      - /mnt/e/downloads:/downloads
+    ports:
+      - 8989:8989
+    networks:
+      - arr-network
+
+  lidarr:
+    image: lscr.io/linuxserver/lidarr:latest
+    container_name: lidarr
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Asia/Kolkata
+    volumes:
+      - /mnt/e/appdata/lidarr:/config
+      - /mnt/d/media/music:/music
+      - /mnt/e/downloads:/downloads
+    ports:
+      - 8686:8686
+    networks:
+      - arr-network
+
+  bazarr:
+    image: lscr.io/linuxserver/bazarr:latest
+    container_name: bazarr
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Asia/Kolkata
+    volumes:
+      - /mnt/e/appdata/bazarr:/config
+      - /mnt/d/media/movies:/movies
+      - /mnt/d/media/tv:/tv
+    ports:
+      - 6767:6767
+    networks:
+      - arr-network
+
+  jellyfin:
+    image: jellyfin/jellyfin:latest
+    container_name: jellyfin
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Kolkata
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,video,utility
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu, video, compute, utility]
+    volumes:
+      - /mnt/e/appdata/jellyfin/config:/config
+      - /mnt/e/appdata/jellyfin/cache:/cache
+      - /mnt/d/media:/media
+    ports:
+      - 8096:8096
+    networks:
+      - arr-network
+
+  jellyseerr:
+    image: fallenbagel/jellyseerr:latest
+    container_name: jellyseerr
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Asia/Kolkata
+    volumes:
+      - /mnt/e/appdata/jellyseerr:/app/config
+    ports:
+      - 5055:5055
+    networks:
+      - arr-network
+
+  stash:
+    image: stashapp/stash:latest
+    container_name: stash
+    restart: unless-stopped
+    network_mode: service:gluetun
+    depends_on:
+      gluetun:
+        condition: service_healthy
+    environment:
+      - STASH_STASH=/data/
+      - STASH_GENERATED=/generated/
+      - STASH_METADATA=/metadata/
+      - STASH_CACHE=/cache/
+      - STASH_PORT=9999
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /mnt/e/appdata/stash/config:/root/.stash
+      - /mnt/e/downloads:/data
+      - /mnt/e/appdata/stash/metadata:/metadata
+      - /mnt/e/appdata/stash/cache:/cache
+      - /mnt/e/appdata/stash/blobs:/blobs
+      - /mnt/e/appdata/stash/generated:/generated
+
+networks:
+  arr-network:
+    name: arr-network

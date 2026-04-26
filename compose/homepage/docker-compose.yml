@@ -1,0 +1,30 @@
+services:
+  homepage:
+    image: nginx:alpine
+    container_name: homepage
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - /mnt/e/appdata/homepage/index.html:/usr/share/nginx/html/index.html:ro
+      - /mnt/e/appdata/homepage/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - /mnt/e/appdata/homepage/ssl:/etc/nginx/ssl:ro
+    ports:
+      - 80:80
+      - 443:443
+    networks:
+      - homepage-net
+      - arr-network
+
+  project-tracker:
+    image: project-tracker:latest
+    container_name: project-tracker
+    restart: unless-stopped
+    networks:
+      - homepage-net
+
+networks:
+  homepage-net:
+    driver: bridge
+  arr-network:
+    external: true

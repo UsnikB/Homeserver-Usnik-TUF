@@ -1,0 +1,14 @@
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    restart: unless-stopped
+    # Get token from: Cloudflare Zero Trust → Networks → Tunnels → your tunnel → Configure
+    command: tunnel --no-autoupdate run --token YOUR_CLOUDFLARE_TUNNEL_TOKEN
+    networks:
+      - arr-network
+
+networks:
+  arr-network:
+    external: true
+    name: arr-network

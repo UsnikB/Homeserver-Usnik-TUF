@@ -1,0 +1,17 @@
+services:
+  uptimekuma:
+    image: louislam/uptime-kuma:latest
+    container_name: uptimekuma
+    restart: unless-stopped
+    environment:
+    volumes:
+      - /mnt/e/appdata/uptimekuma:/app/data
+    ports:
+      - 3001:3001
+    networks:
+      - homepage-net
+
+networks:
+  homepage-net:
+    name: homepage_homepage-net
+    external: true

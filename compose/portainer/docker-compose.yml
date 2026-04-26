@@ -1,0 +1,18 @@
+services:
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /mnt/e/appdata/portainer:/data
+    ports:
+      - 9000:9000
+      - 9443:9443
+    networks:
+      - arr-network
+
+networks:
+  arr-network:
+    external: true
+    name: arr-network

@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Homelab</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 24px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: #f8fafc;
+    }
+
+    header p {
+      margin-top: 6px;
+      color: #64748b;
+      font-size: 0.9rem;
+    }
+
+    /* ── Stats bar ── */
+    .stats-bar {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      justify-content: center;
+      width: 100%;
+      max-width: 900px;
+      margin-bottom: 40px;
+    }
+
+    .stat-card {
+      background: #1e2330;
+      border: 1px solid #2d3448;
+      border-radius: 12px;
+      padding: 14px 20px;
+      flex: 1;
+      min-width: 160px;
+    }
+
+    .stat-label {
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #475569;
+      margin-bottom: 6px;
+    }
+
+    .stat-value {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #f1f5f9;
+    }
+
+    .stat-sub {
+      font-size: 0.72rem;
+      color: #64748b;
+      margin-top: 2px;
+    }
+
+    .stat-bar-track {
+      height: 4px;
+      background: #2d3448;
+      border-radius: 99px;
+      margin-top: 8px;
+      overflow: hidden;
+    }
+
+    .stat-bar-fill {
+      height: 100%;
+      border-radius: 99px;
+      background: #4f6ef7;
+      transition: width 0.6s ease;
+    }
+
+    .stat-bar-fill.warn  { background: #f59e0b; }
+    .stat-bar-fill.crit  { background: #ef4444; }
+
+    /* ── Service grid ── */
+    .section-label {
+      width: 100%;
+      max-width: 900px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #475569;
+      margin-bottom: 12px;
+      padding-left: 4px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 14px;
+      width: 100%;
+      max-width: 900px;
+      margin-bottom: 36px;
+    }
+
+    a.card {
+      background: #1e2330;
+      border: 1px solid #2d3448;
+      border-radius: 12px;
+      padding: 20px 16px;
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      transition: border-color 0.2s, transform 0.15s, background 0.2s;
+    }
+
+    a.card:hover {
+      border-color: #4f6ef7;
+      background: #232940;
+      transform: translateY(-2px);
+    }
+
+    .icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+    }
+
+    .card-name {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #cbd5e1;
+    }
+
+    .card-desc {
+      font-size: 0.72rem;
+      color: #64748b;
+      text-align: center;
+    }
+
+    footer {
+      margin-top: auto;
+      padding-top: 48px;
+      color: #334155;
+      font-size: 0.75rem;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Homelab</h1>
+    <p>usnik-tuf · netherlands vpn</p>
+  </header>
+
+  <!-- Live Stats -->
+  <div class="stats-bar">
+    <div class="stat-card">
+      <div class="stat-label">CPU</div>
+      <div class="stat-value" id="cpu-val">—</div>
+      <div class="stat-sub" id="cpu-sub">16 cores</div>
+      <div class="stat-bar-track"><div class="stat-bar-fill" id="cpu-bar" style="width:0%"></div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Memory</div>
+      <div class="stat-value" id="mem-val">—</div>
+      <div class="stat-sub" id="mem-sub">loading...</div>
+      <div class="stat-bar-track"><div class="stat-bar-fill" id="mem-bar" style="width:0%"></div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">SSD · /mnt/e</div>
+      <div class="stat-value" id="ssd-val">—</div>
+      <div class="stat-sub" id="ssd-sub">loading...</div>
+      <div class="stat-bar-track"><div class="stat-bar-fill" id="ssd-bar" style="width:0%"></div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">HDD · /mnt/d</div>
+      <div class="stat-value" id="hdd-val">—</div>
+      <div class="stat-sub" id="hdd-sub">loading...</div>
+      <div class="stat-bar-track"><div class="stat-bar-fill" id="hdd-bar" style="width:0%"></div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">GPU · GTX 1660 Ti</div>
+      <div class="stat-value" id="gpu-val">—</div>
+      <div class="stat-sub" id="gpu-sub">loading...</div>
+      <div class="stat-bar-track"><div class="stat-bar-fill" id="gpu-bar" style="width:0%"></div></div>
+    </div>
+  </div>
+
+  <div class="section-label">Media</div>
+  <div class="grid">
+    <a class="card" href="/jellyfin/" target="_blank">
+      <div class="icon" style="background:#00a4dc22;">🎬</div>
+      <span class="card-name">Jellyfin</span>
+      <span class="card-desc">Media server</span>
+    </a>
+    <a class="card" href="/jellyseerr/" target="_blank">
+      <div class="icon" style="background:#f59e0b22;">🎟️</div>
+      <span class="card-name">Jellyseerr</span>
+      <span class="card-desc">Request media</span>
+    </a>
+    <a class="card" href="/stash/" target="_blank">
+      <div class="icon" style="background:#ef444422;">💎</div>
+      <span class="card-name">Stash</span>
+      <span class="card-desc">Media organizer</span>
+    </a>
+  </div>
+
+  <div class="section-label">Automation</div>
+  <div class="grid">
+    <a class="card" href="/radarr/" target="_blank">
+      <div class="icon" style="background:#f9c74f22;">🎥</div>
+      <span class="card-name">Radarr</span>
+      <span class="card-desc">Movies</span>
+    </a>
+    <a class="card" href="/sonarr/" target="_blank">
+      <div class="icon" style="background:#4cc9f022;">📺</div>
+      <span class="card-name">Sonarr</span>
+      <span class="card-desc">TV Shows</span>
+    </a>
+    <a class="card" href="/lidarr/" target="_blank">
+      <div class="icon" style="background:#f7258522;">🎵</div>
+      <span class="card-name">Lidarr</span>
+      <span class="card-desc">Music</span>
+    </a>
+    <a class="card" href="/prowlarr/" target="_blank">
+      <div class="icon" style="background:#7209b722;">🔍</div>
+      <span class="card-name">Prowlarr</span>
+      <span class="card-desc">Indexers</span>
+    </a>
+    <a class="card" href="/bazarr/" target="_blank">
+      <div class="icon" style="background:#a855f722;">💬</div>
+      <span class="card-name">Bazarr</span>
+      <span class="card-desc">Subtitles</span>
+    </a>
+  </div>
+
+  <div class="section-label">Downloads</div>
+  <div class="grid">
+    <a class="card" href="/qbittorrent/" target="_blank">
+      <div class="icon" style="background:#06d6a022;">⬇️</div>
+      <span class="card-name">qBittorrent</span>
+      <span class="card-desc">Torrent client</span>
+    </a>
+  </div>
+
+  <div class="section-label">System</div>
+  <div class="grid">
+    <a class="card" href="/project-plan/" target="_blank">
+      <div class="icon" style="background:#bb86fc22;">🚀</div>
+      <span class="card-name">Project Plan</span>
+      <span class="card-desc">GenAI roadmap</span>
+    </a>
+    <a class="card" href="/obsidian/" target="_blank">
+      <div class="icon" style="background:#7c3aed22;">📝</div>
+      <span class="card-name">Obsidian</span>
+      <span class="card-desc">Note Vault</span>
+    </a>
+    <a class="card" href="/portainer/" target="_blank">
+      <div class="icon" style="background:#3b82f622;">🐳</div>
+      <span class="card-name">Portainer</span>
+      <span class="card-desc">Docker manager</span>
+    </a>
+    <a class="card" href="/uptime/" target="_blank">
+      <div class="icon" style="background:#22c55e22;">💚</div>
+      <span class="card-name">Uptime Kuma</span>
+      <span class="card-desc">Service monitor</span>
+    </a>
+  </div>
+
+  <footer>usnik-tuf homelab</footer>
+
+  <script>
+    function fmt(bytes) {
+      if (bytes >= 1e12) return (bytes / 1e12).toFixed(1) + ' TB';
+      if (bytes >= 1e9)  return (bytes / 1e9).toFixed(1) + ' GB';
+      if (bytes >= 1e6)  return (bytes / 1e6).toFixed(1) + ' MB';
+      return bytes + ' B';
+    }
+
+    function setBar(id, pct) {
+      const el = document.getElementById(id);
+      el.style.width = pct + '%';
+      el.className = 'stat-bar-fill' + (pct >= 90 ? ' crit' : pct >= 70 ? ' warn' : '');
+    }
+
+    async function fetchStats() {
+      try {
+        const [cpu, mem, disks, gpu] = await Promise.all([
+          fetch('/stats/cpu').then(r => r.json()),
+          fetch('/stats/mem').then(r => r.json()),
+          fetch('/stats/disks').then(r => r.json()),
+          fetch('/stats/gpu').then(r => r.json()),
+        ]);
+
+        // CPU
+        const cpuPct = Math.round(cpu.total ?? 0);
+        document.getElementById('cpu-val').textContent = cpuPct + '%';
+        document.getElementById('cpu-sub').textContent = cpu.cpucore + ' cores';
+        setBar('cpu-bar', cpuPct);
+
+        // Memory
+        const memPct = Math.round(mem.percent ?? 0);
+        document.getElementById('mem-val').textContent = memPct + '%';
+        document.getElementById('mem-sub').textContent = fmt(mem.used) + ' / ' + fmt(mem.total);
+        setBar('mem-bar', memPct);
+
+        // Disks
+        if (disks.e && !disks.e.error) {
+          const p = disks.e.percent;
+          document.getElementById('ssd-val').textContent = p + '%';
+          document.getElementById('ssd-sub').textContent = fmt(disks.e.used) + ' / ' + fmt(disks.e.size);
+          setBar('ssd-bar', p);
+        }
+        if (disks.d && !disks.d.error) {
+          const p = disks.d.percent;
+          document.getElementById('hdd-val').textContent = p + '%';
+          document.getElementById('hdd-sub').textContent = fmt(disks.d.used) + ' / ' + fmt(disks.d.size);
+          setBar('hdd-bar', p);
+        }
+        // GPU
+        if (gpu && !gpu.error) {
+          document.getElementById('gpu-val').textContent = gpu.util + '%';
+          document.getElementById('gpu-sub').textContent = gpu.mem_used + ' / ' + gpu.mem_total + ' MiB · ' + gpu.temp + '°C';
+          setBar('gpu-bar', gpu.util);
+        }
+      } catch(e) {
+        console.warn('Stats unavailable:', e);
+      }
+    }
+
+    fetchStats();
+    setInterval(fetchStats, 10000);
+  </script>
+
+</body>
+</html>

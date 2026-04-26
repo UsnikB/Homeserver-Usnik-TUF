@@ -1,0 +1,52 @@
+# ── Large / OS junk ──────────────────────────────────────────────
+SteamLibrary/
+DockerDesktop/
+docker/
+databases/
+downloads/
+WSL/
+$RECYCLE.BIN/
+System Volume Information/
+Thumbs.db
+Screenshot*.png
+*.png
+*.jpg
+*.jpeg
+
+# ── Obsidian vault (has its own git workflow) ─────────────────────
+usnik-vault/
+
+# ── Most of appdata (only specific config files are tracked) ──────
+appdata/bazarr/
+appdata/cloudflared/
+appdata/gluetun/
+appdata/jellyfin/
+appdata/jellyseerr/
+appdata/lidarr/
+appdata/nginx-proxy-manager/
+appdata/obsidian/
+appdata/portainer/
+appdata/prowlarr/
+appdata/qbittorrent/
+appdata/radarr/
+appdata/readarr/
+appdata/sonarr/
+appdata/stash/
+appdata/uptimekuma/
+appdata/whisparr/
+
+# ── SSL private keys ──────────────────────────────────────────────
+appdata/homepage/ssl/*.key
+appdata/homepage/ssl/*.pem
+appdata/homepage/ssl/*.srl
+appdata/homepage/ssl/*.csr
+# Keep: *.crt and ext.cnf (public, needed for reference)
+
+# ── Secrets (never commit) ────────────────────────────────────────
+.env
+**/.env
+
+# ── Misc ──────────────────────────────────────────────────────────
+*.log
+*.tmp
+*.bak

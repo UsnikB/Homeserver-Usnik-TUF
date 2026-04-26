@@ -1,0 +1,18 @@
+services:
+  obsidian:
+    image: lscr.io/linuxserver/obsidian:latest
+    container_name: obsidian
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Amsterdam
+    volumes:
+      - /mnt/e/appdata/obsidian/config:/config
+      - /mnt/e/usnik-vault:/vault
+    networks:
+      - homepage_homepage-net
+
+networks:
+  homepage_homepage-net:
+    external: true

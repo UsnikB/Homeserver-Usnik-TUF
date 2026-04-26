@@ -1,0 +1,22 @@
+services:
+  diskstats:
+    image: python:3-slim
+    container_name: diskstats
+    restart: unless-stopped
+    command: sh -c "pip install nvidia-ml-py -q && python3 /server.py"
+    environment:
+      - LD_LIBRARY_PATH=/usr/lib/wsl/lib
+    volumes:
+      - /mnt/e/appdata/diskstats/server.py:/server.py:ro
+      - /mnt/e:/mnt/e:ro
+      - /mnt/d:/mnt/d:ro
+      - /usr/lib/wsl/lib:/usr/lib/wsl/lib:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu, compute, utility]
+    ports:
+      - 61209:61209
