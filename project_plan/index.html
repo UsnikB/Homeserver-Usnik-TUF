@@ -224,6 +224,11 @@
         }
 
         #chat-panel.open { right: 0; }
+        #chat-panel.fullscreen {
+            width: 100%;
+            right: 0;
+            border-left: none;
+        }
 
         .chat-header {
             padding: 20px;
@@ -232,6 +237,12 @@
             justify-content: space-between;
             align-items: center;
             border-bottom: 1px solid var(--border-color);
+        }
+
+        .chat-header-actions {
+            display: flex;
+            gap: 15px;
+            align-items: center;
         }
 
         .chat-messages {
@@ -354,7 +365,8 @@
     <div id="chat-panel">
         <div class="chat-header">
             <span>GenAI Mentor</span>
-            <div style="display: flex; gap: 15px; align-items: center;">
+            <div class="chat-header-actions">
+                <span id="fullscreen-trigger" style="cursor: pointer; font-size: 1.1rem;" title="Toggle Fullscreen">⛶</span>
                 <span id="settings-trigger" style="cursor: pointer; font-size: 1.2rem;">⚙️</span>
                 <span class="close-btn" id="close-chat">&times;</span>
             </div>
@@ -380,7 +392,7 @@
             </div>
             <div class="setting-group" id="ollama-url-group" style="display:none">
                 <label>Ollama URL</label>
-                <input type="text" id="ollama-url-input" value="http://localhost:11434">
+                <input type="text" id="ollama-url-input" value="http://192.168.0.4:11434">
             </div>
             <button id="save-settings" style="width:100%; padding: 8px; background: var(--success-color); border:none; border-radius:4px; cursor:pointer; font-weight:bold;">Save Settings</button>
         </div>
@@ -413,7 +425,6 @@
                     { id: 103, title: "LangGraph ReAct Loop", desc: "Design the graph state and implement the standard ReAct (Reason-Action) cycle with conditional edges that determine when to call tools vs when to respond.", completed: false },
                     { id: 104, title: "Integration & Optimization", desc: "Connect the RAG tool to the agent, fine-tune the system prompt for research accuracy, and perform benchmark tests to ensure valid citations.", completed: false }
                 ],
-                notes: ""
             },
             {
                 id: 2,
@@ -430,7 +441,6 @@
                     { id: 203, title: "Multi-Tenant RAG", desc: "Enhance the vector store to support metadata filtering for different users/teams and integrate Unstructured.io for handling messy PDF layouts.", completed: false },
                     { id: 204, title: "API & State Management", desc: "Wrap the multi-agent graph in a FastAPI backend and ensure state persistence across turns in a multi-tenant context using checkpointers.", completed: false }
                 ],
-                notes: ""
             },
             {
                 id: 3,
@@ -447,7 +457,6 @@
                     { id: 303, title: "Evaluation & Observability", desc: "Set up RAGAS for automated evaluation of retrieval quality and implement custom LangSmith evaluators for the agentic output.", completed: false },
                     { id: 304, title: "UI & Final Polish", desc: "Build a Streamlit dashboard to visualize the report generation process in real-time, including agent logs, and finalize the prototype.", completed: false }
                 ],
-                notes: ""
             }
         ];
 
@@ -457,10 +466,10 @@
                 { role: 'assistant', content: "Hey! I know your full plan — 3 projects over 3 months to master LangGraph and multi-agent design. You're starting with the AI Research Assistant. What do you want to tackle first?" }
             ],
             settings: {
-                provider: 'anthropic',
+                provider: 'ollama',
                 apiKey: '',
-                modelName: 'claude-3-5-sonnet-20241022',
-                ollamaUrl: 'http://localhost:11434'
+                modelName: 'qwen3.5:9b',
+                ollamaUrl: 'http://192.168.0.4:11434'
             },
             currentProjectId: null
         };
@@ -598,11 +607,6 @@
                                 ${project.stack.map(s => `<span class="tech-tag">${s}</span>`).join('')}
                             </div>
                         </div>
-
-                        <div class="content-block">
-                            <div class="block-title">Journal / Notes</div>
-                            <textarea placeholder="Record architectural decisions, bugs encountered, or learning breakthroughs..." oninput="updateNotes(${project.id}, this.value)">${project.notes}</textarea>
-                        </div>
                     </div>
                 </div>
             `;
@@ -620,13 +624,7 @@
 
             saveState();
             renderDetail();
-            renderHome(); 
-        };
-
-        window.updateNotes = (projectId, val) => {
-            const project = state.projects.find(p => p.id === projectId);
-            project.notes = val;
-            saveState();
+            renderHome();
         };
 
         function renderChat() {
@@ -641,7 +639,7 @@
         }
 
         // --- AI API INTEGRATIONS ---
-        async function callAI(message) {
+        async function callAI(message, onChunk) {
             const { provider, apiKey, modelName, ollamaUrl } = state.settings;
             const messages = [
                 { role: 'system', content: SYSTEM_PROMPT },
@@ -703,25 +701,66 @@
                 } else if (provider === 'ollama') {
                     const response = await fetch(`${ollamaUrl}/api/chat`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 
+                            'Content-Type': 'application/json'
+                        },
                         body: JSON.stringify({
-                            model: modelName || 'llama3',
+                            model: modelName || 'qwen3.5:9b',
                             messages: messages,
-                            stream: false
+                            stream: true
                         })
                     });
-                    const data = await response.json();
-                    return data.message.content;
+
+                    if (!response.ok) {
+                        throw new Error(`Ollama responded with status ${response.status}.`);
+                    }
+
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let fullContent = '';
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        
+                        const chunk = decoder.decode(value, { stream: true });
+                        const lines = chunk.split('\n');
+                        
+                        for (const line of lines) {
+                            if (!line.trim()) continue;
+                            try {
+                                const json = JSON.parse(line);
+                                if (json.message && json.message.content) {
+                                    fullContent += json.message.content;
+                                    if (onChunk) onChunk(fullContent);
+                                }
+                                if (json.done) break;
+                            } catch (e) {
+                                console.warn('Failed to parse JSON chunk', line);
+                            }
+                        }
+                    }
+                    return fullContent;
                 }
             } catch (err) {
                 console.error(err);
+                if (provider === 'ollama') {
+                    return `Error: ${err.message}. This is likely a CORS issue. Please ensure Ollama is running with OLLAMA_ORIGINS="*" and that the URL ${ollamaUrl} is reachable.`;
+                }
                 return `Error: ${err.message}. Please check your API settings.`;
             }
         }
 
         // --- EVENT LISTENERS ---
         chatTrigger.addEventListener('click', () => chatPanel.classList.toggle('open'));
-        closeChat.addEventListener('click', () => chatPanel.classList.remove('open'));
+        closeChat.addEventListener('click', () => {
+            chatPanel.classList.remove('open');
+            chatPanel.classList.remove('fullscreen');
+        });
+
+        document.getElementById('fullscreen-trigger').addEventListener('click', () => {
+            chatPanel.classList.toggle('fullscreen');
+        });
         
         settingsTrigger.addEventListener('click', () => {
             settingsPanel.classList.toggle('open');
@@ -760,15 +799,17 @@
             chatInput.value = '';
             renderChat();
 
-            const loadingDiv = document.createElement('div');
-            loadingDiv.className = 'message message-assistant';
-            loadingDiv.textContent = 'Thinking...';
-            chatMessages.appendChild(loadingDiv);
+            const assistantMsgDiv = document.createElement('div');
+            assistantMsgDiv.className = 'message message-assistant';
+            assistantMsgDiv.textContent = '...';
+            chatMessages.appendChild(assistantMsgDiv);
             chatMessages.scrollTop = chatMessages.scrollHeight;
 
-            const response = await callAI(text);
+            const response = await callAI(text, (currentText) => {
+                assistantMsgDiv.textContent = currentText;
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            });
             
-            chatMessages.removeChild(loadingDiv);
             state.chatHistory.push({ role: 'assistant', content: response });
             saveState();
             renderChat();
