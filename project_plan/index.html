@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GenAI Project Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         :root {
             --bg-color: #121212;
@@ -225,9 +226,18 @@
 
         #chat-panel.open { right: 0; }
         #chat-panel.fullscreen {
-            width: 100%;
+            width: 100vw;
+            height: 100vh;
             right: 0;
+            top: 0;
             border-left: none;
+            border-radius: 0;
+        }
+
+        #chat-panel.fullscreen .message {
+            max-width: 900px;
+            width: 100%;
+            margin: 0 auto;
         }
 
         .chat-header {
@@ -245,28 +255,139 @@
             align-items: center;
         }
 
+        /* Sessions Panel */
+        .sessions-panel {
+            position: absolute;
+            top: 60px;
+            left: 0;
+            width: 100%;
+            background-color: #222;
+            border-bottom: 1px solid var(--border-color);
+            display: none;
+            flex-direction: column;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 1002;
+        }
+
+        .sessions-panel.open { display: flex; }
+
+        .session-item {
+            padding: 12px 20px;
+            border-bottom: 1px solid #333;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.2s;
+        }
+
+        .session-item:hover { background-color: #333; }
+        .session-item.active { border-left: 3px solid var(--accent-color); background-color: #2a2a2a; }
+        .session-title { flex-grow: 1; font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .delete-session { color: var(--danger-color); font-size: 1.2rem; padding: 0 5px; opacity: 0.5; }
+        .delete-session:hover { opacity: 1; }
+
+        .new-chat-btn {
+            padding: 12px;
+            background-color: var(--accent-color);
+            color: #000;
+            text-align: center;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
         .chat-messages {
             flex-grow: 1;
             padding: 20px;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 20px;
         }
 
         .message {
             max-width: 85%;
-            padding: 12px 16px;
+            padding: 16px 20px;
             border-radius: 12px;
             font-size: 0.95rem;
-            line-height: 1.5;
-            white-space: pre-wrap;
+            line-height: 1.6;
+            position: relative;
+        }
+
+        .delete-msg {
+            position: absolute;
+            top: 5px;
+            right: 8px;
+            cursor: pointer;
+            opacity: 0;
+            color: var(--secondary-text);
+            font-size: 1.2rem;
+            transition: opacity 0.2s;
+            z-index: 10;
+        }
+
+        .message:hover .delete-msg { opacity: 1; }
+        .delete-msg:hover { color: var(--danger-color); }
+
+        /* Markdown Styling */
+        .message table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 15px 0;
+            background: #252525;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .message th, .message td {
+            border: 1px solid var(--border-color);
+            padding: 12px;
+            text-align: left;
+        }
+
+        .message th {
+            background-color: #333;
+            color: var(--accent-color);
+        }
+
+        .message tr:nth-child(even) {
+            background-color: #2a2a2a;
+        }
+
+        .message pre {
+            background-color: #000;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            border: 1px solid var(--border-color);
+        }
+
+        .message code {
+            font-family: 'Fira Code', 'Courier New', monospace;
+            background-color: rgba(255,255,255,0.1);
+            padding: 2px 5px;
+            border-radius: 4px;
+        }
+
+        .message pre code {
+            background-color: transparent;
+            padding: 0;
+        }
+
+        .message ul, .message ol {
+            padding-left: 25px;
+        }
+
+        .message p {
+            margin: 8px 0;
         }
 
         .message-assistant {
-            background-color: #333;
+            background-color: #2a2a2a;
             align-self: flex-start;
             border-bottom-left-radius: 2px;
+            box-shadow: 2px 2px 10px rgba(0,0,0,0.2);
         }
 
         .message-user {
@@ -274,6 +395,7 @@
             color: #000;
             align-self: flex-end;
             border-bottom-right-radius: 2px;
+            box-shadow: -2px 2px 10px rgba(0,0,0,0.2);
         }
 
         .chat-input-area {
@@ -364,11 +486,21 @@
 
     <div id="chat-panel">
         <div class="chat-header">
-            <span>GenAI Mentor</span>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span id="sessions-trigger" style="cursor: pointer; font-size: 1.2rem;" title="Chat Sessions">☰</span>
+                <span>GenAI Mentor</span>
+            </div>
             <div class="chat-header-actions">
                 <span id="fullscreen-trigger" style="cursor: pointer; font-size: 1.1rem;" title="Toggle Fullscreen">⛶</span>
                 <span id="settings-trigger" style="cursor: pointer; font-size: 1.2rem;">⚙️</span>
                 <span class="close-btn" id="close-chat">&times;</span>
+            </div>
+        </div>
+
+        <div class="sessions-panel" id="sessions-panel">
+            <div class="new-chat-btn" id="new-chat-btn">+ New Chat</div>
+            <div id="sessions-list">
+                <!-- Session items injected here -->
             </div>
         </div>
         
@@ -462,9 +594,16 @@
 
         let state = JSON.parse(localStorage.getItem('genai_tracker_state')) || {
             projects: DEFAULT_PROJECTS,
-            chatHistory: [
-                { role: 'assistant', content: "Hey! I know your full plan — 3 projects over 3 months to master LangGraph and multi-agent design. You're starting with the AI Research Assistant. What do you want to tackle first?" }
+            sessions: [
+                { 
+                    id: 'default', 
+                    title: 'New Chat', 
+                    messages: [
+                        { id: 'initial', role: 'assistant', content: "Hey! I know your full plan — 3 projects over 3 months to master LangGraph and multi-agent design. You're starting with the AI Research Assistant. What do you want to tackle first?" }
+                    ]
+                }
             ],
+            currentSessionId: 'default',
             settings: {
                 provider: 'ollama',
                 apiKey: '',
@@ -475,7 +614,28 @@
         };
 
         // --- STATE MIGRATION / SYNC ---
-        // If the user has old state without 'summary', force update projects from DEFAULT_PROJECTS
+        // Migrate legacy chatHistory to sessions
+        if (state.chatHistory) {
+            console.log("Migrating legacy chatHistory to sessions...");
+            const legacySession = {
+                id: 'legacy-' + Date.now(),
+                title: 'Legacy Chat',
+                messages: state.chatHistory.map((m, idx) => ({ ...m, id: 'msg-' + idx }))
+            };
+            state.sessions = [legacySession, ...(state.sessions || [])];
+            state.currentSessionId = legacySession.id;
+            delete state.chatHistory;
+            saveState();
+        }
+
+        // Ensure all messages have IDs
+        state.sessions.forEach(session => {
+            session.messages.forEach((msg, idx) => {
+                if (!msg.id) msg.id = 'msg-' + Date.now() + '-' + idx;
+            });
+        });
+
+        // If projects have no summary (old state)
         if (state.projects && state.projects.length > 0 && !state.projects[0].summary) {
             console.log("Migrating state to new structure...");
             state.projects = DEFAULT_PROJECTS;
@@ -502,6 +662,10 @@
         const modelNameInput = document.getElementById('model-name-input');
         const ollamaUrlInput = document.getElementById('ollama-url-input');
         const saveSettingsBtn = document.getElementById('save-settings');
+        const sessionsTrigger = document.getElementById('sessions-trigger');
+        const sessionsPanel = document.getElementById('sessions-panel');
+        const sessionsList = document.getElementById('sessions-list');
+        const newChatBtn = document.getElementById('new-chat-btn');
 
         // --- NAVIGATION & RENDERING ---
         function saveState() {
@@ -627,12 +791,89 @@
             renderHome();
         };
 
+        function createNewSession() {
+            const newSession = {
+                id: 'session-' + Date.now(),
+                title: 'New Chat',
+                messages: [
+                    { id: 'initial-' + Date.now(), role: 'assistant', content: "Hey! How can I help with your project roadmap?" }
+                ]
+            };
+            state.sessions.unshift(newSession);
+            state.currentSessionId = newSession.id;
+            saveState();
+            renderSessionsList();
+            renderChat();
+            sessionsPanel.classList.remove('open');
+        }
+
+        function switchSession(id) {
+            state.currentSessionId = id;
+            saveState();
+            renderSessionsList();
+            renderChat();
+            sessionsPanel.classList.remove('open');
+        }
+
+        function deleteSession(e, id) {
+            e.stopPropagation();
+            if (state.sessions.length <= 1) return;
+            state.sessions = state.sessions.filter(s => s.id !== id);
+            if (state.currentSessionId === id) {
+                state.currentSessionId = state.sessions[0].id;
+            }
+            saveState();
+            renderSessionsList();
+            renderChat();
+        }
+
+        function renderSessionsList() {
+            sessionsList.innerHTML = '';
+            state.sessions.forEach(session => {
+                const div = document.createElement('div');
+                div.className = `session-item ${session.id === state.currentSessionId ? 'active' : ''}`;
+                div.onclick = () => switchSession(session.id);
+                div.innerHTML = `
+                    <span class="session-title">${session.title}</span>
+                    <span class="delete-session" onclick="deleteSession(event, '${session.id}')">&times;</span>
+                `;
+                sessionsList.appendChild(div);
+            });
+        }
+
+        function deleteMessage(id) {
+            const session = state.sessions.find(s => s.id === state.currentSessionId);
+            session.messages = session.messages.filter(m => m.id !== id);
+            saveState();
+            renderChat();
+        }
+
         function renderChat() {
             chatMessages.innerHTML = '';
-            state.chatHistory.forEach(msg => {
+            const session = state.sessions.find(s => s.id === state.currentSessionId);
+            if (!session) return;
+
+            session.messages.forEach(msg => {
                 const div = document.createElement('div');
                 div.className = `message message-${msg.role}`;
-                div.textContent = msg.content;
+                
+                // Delete button
+                const delBtn = document.createElement('span');
+                delBtn.className = 'delete-msg';
+                delBtn.innerHTML = '&times;';
+                delBtn.onclick = () => deleteMessage(msg.id);
+                div.appendChild(delBtn);
+
+                // Content
+                const contentDiv = document.createElement('div');
+                // Fallback if marked library fails to load
+                if (typeof marked !== 'undefined') {
+                    contentDiv.innerHTML = marked.parse(msg.content);
+                } else {
+                    contentDiv.textContent = msg.content;
+                    contentDiv.style.whiteSpace = 'pre-wrap';
+                }
+                div.appendChild(contentDiv);
                 chatMessages.appendChild(div);
             });
             chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -641,9 +882,10 @@
         // --- AI API INTEGRATIONS ---
         async function callAI(message, onChunk) {
             const { provider, apiKey, modelName, ollamaUrl } = state.settings;
+            const session = state.sessions.find(s => s.id === state.currentSessionId);
             const messages = [
                 { role: 'system', content: SYSTEM_PROMPT },
-                ...state.chatHistory.map(m => ({ role: m.role, content: m.content })),
+                ...(session ? session.messages.map(m => ({ role: m.role, content: m.content })) : []),
                 { role: 'user', content: message }
             ];
 
@@ -712,19 +954,24 @@
                     });
 
                     if (!response.ok) {
-                        throw new Error(`Ollama responded with status ${response.status}.`);
+                        const errorText = await response.text();
+                        throw new Error(`Ollama error (${response.status}): ${errorText || response.statusText}`);
                     }
 
                     const reader = response.body.getReader();
                     const decoder = new TextDecoder();
                     let fullContent = '';
+                    let buffer = '';
 
                     while (true) {
                         const { done, value } = await reader.read();
                         if (done) break;
                         
-                        const chunk = decoder.decode(value, { stream: true });
-                        const lines = chunk.split('\n');
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        
+                        // Keep the last partial line in the buffer
+                        buffer = lines.pop();
                         
                         for (const line of lines) {
                             if (!line.trim()) continue;
@@ -736,7 +983,7 @@
                                 }
                                 if (json.done) break;
                             } catch (e) {
-                                console.warn('Failed to parse JSON chunk', line);
+                                console.warn('Failed to parse JSON line', line, e);
                             }
                         }
                     }
@@ -756,14 +1003,24 @@
         closeChat.addEventListener('click', () => {
             chatPanel.classList.remove('open');
             chatPanel.classList.remove('fullscreen');
+            sessionsPanel.classList.remove('open');
         });
 
         document.getElementById('fullscreen-trigger').addEventListener('click', () => {
             chatPanel.classList.toggle('fullscreen');
         });
+
+        sessionsTrigger.addEventListener('click', () => {
+            sessionsPanel.classList.toggle('open');
+            settingsPanel.classList.remove('open');
+            if (sessionsPanel.classList.contains('open')) renderSessionsList();
+        });
+
+        newChatBtn.addEventListener('click', createNewSession);
         
         settingsTrigger.addEventListener('click', () => {
             settingsPanel.classList.toggle('open');
+            sessionsPanel.classList.remove('open');
             apiKeyInput.value = state.settings.apiKey;
             modelNameInput.value = state.settings.modelName;
             ollamaUrlInput.value = state.settings.ollamaUrl;
@@ -795,24 +1052,45 @@
             const text = chatInput.value.trim();
             if (!text) return;
 
-            state.chatHistory.push({ role: 'user', content: text });
+            const session = state.sessions.find(s => s.id === state.currentSessionId);
+            if (!session) return;
+
+            // Auto-title if it's the first real message
+            if (session.messages.length <= 1 && text.length > 5) {
+                session.title = text.substring(0, 30) + (text.length > 30 ? '...' : '');
+            }
+
+            const userMsgId = 'msg-' + Date.now();
+            session.messages.push({ id: userMsgId, role: 'user', content: text });
             chatInput.value = '';
             renderChat();
 
+            const assistantMsgId = 'msg-' + (Date.now() + 1);
             const assistantMsgDiv = document.createElement('div');
             assistantMsgDiv.className = 'message message-assistant';
-            assistantMsgDiv.textContent = '...';
+            assistantMsgDiv.innerHTML = '...';
             chatMessages.appendChild(assistantMsgDiv);
             chatMessages.scrollTop = chatMessages.scrollHeight;
 
-            const response = await callAI(text, (currentText) => {
-                assistantMsgDiv.textContent = currentText;
-                chatMessages.scrollTop = chatMessages.scrollHeight;
-            });
-            
-            state.chatHistory.push({ role: 'assistant', content: response });
-            saveState();
-            renderChat();
+            try {
+                const response = await callAI(text, (currentText) => {
+                    if (typeof marked !== 'undefined') {
+                        assistantMsgDiv.innerHTML = marked.parse(currentText);
+                    } else {
+                        assistantMsgDiv.textContent = currentText;
+                        assistantMsgDiv.style.whiteSpace = 'pre-wrap';
+                    }
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                });
+                
+                session.messages.push({ id: assistantMsgId, role: 'assistant', content: response });
+                saveState();
+                renderChat();
+            } catch (err) {
+                console.error(err);
+                assistantMsgDiv.textContent = `Error: ${err.message}. Please check your connection to Ollama.`;
+                assistantMsgDiv.classList.add('message-danger');
+            }
         }
 
         sendBtn.addEventListener('click', handleSend);
@@ -826,6 +1104,7 @@
         } else {
             showHome();
         }
+        renderSessionsList();
         renderChat();
     </script>
 </body>
