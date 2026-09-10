@@ -2,8 +2,8 @@ import subprocess, json
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
 DISKS = {
-    'e': '/mnt/e',
-    'd': '/mnt/d',
+    'flash': '/mnt/flash',
+    'vault': '/mnt/vault',
 }
 
 try:

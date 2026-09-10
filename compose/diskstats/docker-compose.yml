@@ -7,7 +7,7 @@ services:
     environment:
       - LD_LIBRARY_PATH=/usr/lib/wsl/lib
     volumes:
-      - /mnt/e/appdata/diskstats/server.py:/server.py:ro
+      - /mnt/flash/appdata/diskstats/server.py:/server.py:ro
       - /mnt/e:/mnt/e:ro
       - /mnt/d:/mnt/d:ro
       - /usr/lib/wsl/lib:/usr/lib/wsl/lib:ro

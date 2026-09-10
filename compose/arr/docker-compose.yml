@@ -20,7 +20,7 @@ services:
       - HEALTH_SERVER_ADDRESS=:9998
       - FIREWALL_INPUT_PORTS=8090,9696
     volumes:
-      - /mnt/e/appdata/gluetun:/gluetun
+      - /mnt/flash/appdata/gluetun:/gluetun
     ports:
       - 8090:8090
       - 8181:8181
@@ -44,8 +44,8 @@ services:
       - TZ=Asia/Kolkata
       - WEBUI_PORT=8090
     volumes:
-      - /mnt/e/appdata/qbittorrent:/config
-      - /mnt/e/downloads:/downloads
+      - /mnt/flash/appdata/qbittorrent:/config
+      - /mnt/flash/downloads:/downloads
 
   prowlarr:
     image: lscr.io/linuxserver/prowlarr:latest
@@ -60,7 +60,7 @@ services:
       - PGID=1000
       - TZ=Asia/Kolkata
     volumes:
-      - /mnt/e/appdata/prowlarr:/config
+      - /mnt/flash/appdata/prowlarr:/config
 
   radarr:
     image: lscr.io/linuxserver/radarr:latest
@@ -71,9 +71,9 @@ services:
       - PGID=1000
       - TZ=Asia/Kolkata
     volumes:
-      - /mnt/e/appdata/radarr:/config
-      - /mnt/d/media/movies:/movies
-      - /mnt/e/downloads:/downloads
+      - /mnt/flash/appdata/radarr:/config
+      - /mnt/vault/media/movies:/movies
+      - /mnt/flash/downloads:/downloads
     ports:
       - 7878:7878
     networks:
@@ -88,10 +88,10 @@ services:
       - PGID=1000
       - TZ=Asia/Kolkata
     volumes:
-      - /mnt/e/appdata/sonarr:/config
-      - /mnt/d/media/tv:/tv
-      - /mnt/d/media/adult:/adult
-      - /mnt/e/downloads:/downloads
+      - /mnt/flash/appdata/sonarr:/config
+      - /mnt/vault/media/tv:/tv
+      - /mnt/vault/media/adult:/adult
+      - /mnt/flash/downloads:/downloads
     ports:
       - 8989:8989
     networks:
@@ -106,9 +106,9 @@ services:
       - PGID=1000
       - TZ=Asia/Kolkata
     volumes:
-      - /mnt/e/appdata/lidarr:/config
-      - /mnt/d/media/music:/music
-      - /mnt/e/downloads:/downloads
+      - /mnt/flash/appdata/lidarr:/config
+      - /mnt/vault/media/music:/music
+      - /mnt/flash/downloads:/downloads
     ports:
       - 8686:8686
     networks:
@@ -123,9 +123,9 @@ services:
       - PGID=1000
       - TZ=Asia/Kolkata
     volumes:
-      - /mnt/e/appdata/bazarr:/config
-      - /mnt/d/media/movies:/movies
-      - /mnt/d/media/tv:/tv
+      - /mnt/flash/appdata/bazarr:/config
+      - /mnt/vault/media/movies:/movies
+      - /mnt/vault/media/tv:/tv
     ports:
       - 6767:6767
     networks:
@@ -137,34 +137,35 @@ services:
     restart: unless-stopped
     environment:
       - TZ=Asia/Kolkata
-      - NVIDIA_VISIBLE_DEVICES=all
-      - NVIDIA_DRIVER_CAPABILITIES=compute,video,utility
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu, video, compute, utility]
+      # - NVIDIA_VISIBLE_DEVICES=all
+      # - NVIDIA_DRIVER_CAPABILITIES=compute,video,utility
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu, video, compute, utility]
     volumes:
-      - /mnt/e/appdata/jellyfin/config:/config
-      - /mnt/e/appdata/jellyfin/cache:/cache
-      - /mnt/d/media:/media
+      - /mnt/flash/appdata/jellyfin/config:/config
+      - /mnt/flash/appdata/jellyfin/cache:/cache
+      - /mnt/vault/media:/media
     ports:
       - 8096:8096
     networks:
       - arr-network
 
   jellyseerr:
-    image: fallenbagel/jellyseerr:latest
+    image: ghcr.io/seerr-team/seerr:latest
     container_name: jellyseerr
     restart: unless-stopped
+    init: true
     environment:
       - PUID=1000
       - PGID=1000
       - TZ=Asia/Kolkata
     volumes:
-      - /mnt/e/appdata/jellyseerr:/app/config
+      - /mnt/flash/appdata/jellyseerr:/app/config
     ports:
       - 5055:5055
     networks:

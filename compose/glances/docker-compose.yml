@@ -10,7 +10,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /mnt:/mnt:ro
-      - /mnt/e:/mnt/e:ro
-      - /mnt/d:/mnt/d:ro
+      - /mnt/flash:/mnt/flash:ro
+      - /mnt/vault:/mnt/vault:ro
     ports:
       - 61208:61208

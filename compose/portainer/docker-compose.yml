@@ -5,7 +5,7 @@ services:
     restart: unless-stopped
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - /mnt/e/appdata/portainer:/data
+      - /mnt/flash/appdata/portainer:/data
     ports:
       - 9000:9000
       - 9443:9443

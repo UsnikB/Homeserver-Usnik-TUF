@@ -3,13 +3,15 @@ services:
     image: lscr.io/linuxserver/obsidian:latest
     container_name: obsidian
     restart: unless-stopped
+    shm_size: "1gb"
     environment:
       - PUID=1000
       - PGID=1000
       - TZ=Europe/Amsterdam
+      - LIBGL_ALWAYS_SOFTWARE=1
     volumes:
-      - /mnt/e/appdata/obsidian/config:/config
-      - /mnt/e/usnik-vault:/vault
+      - /mnt/flash/appdata/obsidian/config:/config
+      - /mnt/flash/usnik-vault:/vault
     networks:
       - homepage_homepage-net
 
