@@ -13,14 +13,21 @@ services:
       - VPN_TYPE=openvpn
       - OPENVPN_USER=${PIA_USER}
       - OPENVPN_PASSWORD=${PIA_PASSWORD}
-      - SERVER_REGIONS=Netherlands
       - TZ=Asia/Kolkata
       - DNS_ADDRESS=1.1.1.1
-      - HTTP_CONTROL_SERVER_PORT=8181
+      - HTTP_CONTROL_SERVER_ADDRESS=:8181
+      - VPN_PORT_FORWARDING=on
+      - VPN_PORT_FORWARDING_PROVIDER=private internet access
+      - VPN_PORT_FORWARDING_UP_COMMAND=/bin/sh /portforward.sh
+      - PORT_FORWARD_ONLY=true
+      # Singapore pool works for PIA port forwarding; the Amsterdam pool does not
+      # (its PF API cert names a different server than gluetun expects).
+      - SERVER_NAMES=Server-10878-2a
       - HEALTH_SERVER_ADDRESS=:9998
-      - FIREWALL_INPUT_PORTS=8090,9696
+      - FIREWALL_INPUT_PORTS=8090,9696,8191   # 8191 = FlareSolverr, reached by Prowlarr on localhost
     volumes:
       - /mnt/flash/appdata/gluetun:/gluetun
+      - /mnt/flash/appdata/gluetun/portforward.sh:/portforward.sh:ro
     ports:
       - 8090:8090
       - 8181:8181
@@ -45,7 +52,7 @@ services:
       - WEBUI_PORT=8090
     volumes:
       - /mnt/flash/appdata/qbittorrent:/config
-      - /mnt/flash/downloads:/downloads
+      - /mnt/vault/data/torrents:/downloads
 
   prowlarr:
     image: lscr.io/linuxserver/prowlarr:latest
@@ -62,6 +69,25 @@ services:
     volumes:
       - /mnt/flash/appdata/prowlarr:/config
 
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: flaresolverr
+    restart: unless-stopped
+    # Shares gluetun's network namespace so ALL of its browser traffic exits through
+    # the PIA tunnel. FlareSolverr fetches torrent indexer sites to solve Cloudflare
+    # challenges, so leaving it on arr-network would send that traffic from Usnik's
+    # real home IP - strictly worse than not having it. Prowlarr sits in the same
+    # namespace and reaches it at http://localhost:8191/ (no published port, so
+    # nothing new is exposed on the host or the LAN).
+    network_mode: service:gluetun
+    depends_on:
+      gluetun:
+        condition: service_healthy
+    environment:
+      - LOG_LEVEL=info
+      - TZ=Asia/Kolkata
+      - CAPTCHA_SOLVER=none
+
   radarr:
     image: lscr.io/linuxserver/radarr:latest
     container_name: radarr
@@ -72,8 +98,7 @@ services:
       - TZ=Asia/Kolkata
     volumes:
       - /mnt/flash/appdata/radarr:/config
-      - /mnt/vault/media/movies:/movies
-      - /mnt/flash/downloads:/downloads
+      - /mnt/vault/data:/data
     ports:
       - 7878:7878
     networks:
@@ -89,9 +114,7 @@ services:
       - TZ=Asia/Kolkata
     volumes:
       - /mnt/flash/appdata/sonarr:/config
-      - /mnt/vault/media/tv:/tv
-      - /mnt/vault/media/adult:/adult
-      - /mnt/flash/downloads:/downloads
+      - /mnt/vault/data:/data
     ports:
       - 8989:8989
     networks:
@@ -107,8 +130,7 @@ services:
       - TZ=Asia/Kolkata
     volumes:
       - /mnt/flash/appdata/lidarr:/config
-      - /mnt/vault/media/music:/music
-      - /mnt/flash/downloads:/downloads
+      - /mnt/vault/data:/data
     ports:
       - 8686:8686
     networks:
@@ -124,8 +146,7 @@ services:
       - TZ=Asia/Kolkata
     volumes:
       - /mnt/flash/appdata/bazarr:/config
-      - /mnt/vault/media/movies:/movies
-      - /mnt/vault/media/tv:/tv
+      - /mnt/vault/data:/data
     ports:
       - 6767:6767
     networks:
@@ -149,7 +170,7 @@ services:
     volumes:
       - /mnt/flash/appdata/jellyfin/config:/config
       - /mnt/flash/appdata/jellyfin/cache:/cache
-      - /mnt/vault/media:/media
+      - /mnt/vault/data/media:/media
     ports:
       - 8096:8096
     networks:
@@ -168,6 +189,18 @@ services:
       - /mnt/flash/appdata/jellyseerr:/app/config
     ports:
       - 5055:5055
+    networks:
+      - arr-network
+
+  recyclarr:
+    image: ghcr.io/recyclarr/recyclarr:8
+    container_name: recyclarr
+    restart: "no"
+    user: "0:0"
+    environment:
+      - TZ=Asia/Kolkata
+    volumes:
+      - /mnt/flash/appdata/recyclarr:/config
     networks:
       - arr-network
 
